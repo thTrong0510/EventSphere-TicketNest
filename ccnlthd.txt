@@ -1,0 +1,172 @@
+-- ==========================
+-- BẢNG NGƯỜI DÙNG VÀ PHÂN QUYỀN
+-- ==========================
+
+CREATE TABLE User (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Role (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name ENUM('ADMIN', 'ORGANIZER', 'ATTENDEE') NOT NULL UNIQUE
+);
+
+CREATE TABLE UserRole (
+    user_id BIGINT NOT NULL,
+    role_id INT NOT NULL,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES Role(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG SỰ KIỆN
+-- ==========================
+
+CREATE TABLE Event (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    organizer_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    event_type ENUM('MUSIC', 'CONFERENCE', 'SPORTS', 'OTHER') NOT NULL,
+    location VARCHAR(255),
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(10, 7),
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    total_tickets INT NOT NULL,
+    ticket_price DECIMAL(10, 2) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (organizer_id) REFERENCES User(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG VÉ
+-- ==========================
+
+CREATE TABLE Ticket (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    ticket_code VARCHAR(100) UNIQUE NOT NULL,
+    price_paid DECIMAL(10, 2) NOT NULL,
+    status ENUM('BOOKED', 'CHECKED_IN', 'CANCELLED') DEFAULT 'BOOKED',
+    booked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Event(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG THANH TOÁN
+-- ==========================
+
+CREATE TABLE Payment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id BIGINT NOT NULL,
+    payment_method ENUM('MOMO', 'VNPAY', 'CREDIT_CARD') NOT NULL,
+    payment_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    amount DECIMAL(10, 2) NOT NULL,
+    status ENUM('SUCCESS', 'FAILED') DEFAULT 'SUCCESS',
+    FOREIGN KEY (ticket_id) REFERENCES Ticket(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG THÔNG BÁO
+-- ==========================
+
+CREATE TABLE Notification (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('REMINDER', 'UPDATE', 'GENERAL') NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG ĐÁNH GIÁ
+-- ==========================
+
+CREATE TABLE Rating (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    rating INT CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Event(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG BÁO CÁO
+-- ==========================
+
+CREATE TABLE Report (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    total_tickets_sold INT DEFAULT 0,
+    total_revenue DECIMAL(10, 2) DEFAULT 0.00,
+    interest_score INT DEFAULT 0,
+    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Event(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- BẢNG CHAT REAL-TIME
+-- ==========================
+
+CREATE TABLE ChatMessage (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL,
+    message TEXT NOT NULL,
+    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Event(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES User(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- GỢI Ý SỰ KIỆN THEO SỞ THÍCH
+-- ==========================
+
+CREATE TABLE EventSuggestion (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    preferred_type ENUM('MUSIC', 'CONFERENCE', 'SPORTS', 'OTHER') NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE
+);
+
+-- ==========================
+-- MÃ GIẢM GIÁ VÀ LIÊN KẾT
+-- ==========================
+
+CREATE TABLE DiscountCode (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_percent INT CHECK (discount_percent BETWEEN 0 AND 100),
+    valid_from DATE,
+    valid_to DATE,
+    target_group VARCHAR(50),
+    usage_limit INT DEFAULT 1
+);
+
+CREATE TABLE TicketDiscount (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id BIGINT NOT NULL,
+    discount_id BIGINT NOT NULL,
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ticket_id) REFERENCES Ticket(id) ON DELETE CASCADE,
+    FOREIGN KEY (discount_id) REFERENCES DiscountCode(id) ON DELETE CASCADE
+);
+
+-- Thêm role mặc định:
+INSERT INTO Role (name) VALUES ('ADMIN'), ('ORGANIZER'), ('ATTENDEE');
