@@ -1,20 +1,36 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import { OPENSANS_REGULAR } from "./utils/const";
+import { NavigationContainer } from "@react-navigation/native";
+import AuthStack from './components/navigation/auth/auth.stack';
+import { UserProvider } from './components/context/user.context';
+
+
+SplashScreen.preventAutoHideAsync();
+
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
-}
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+	const [loaded, error] = useFonts({
+		[OPENSANS_REGULAR]: require('./assets/fonts/Open_Sans/OpenSans-Regular.ttf'),
+	});
+
+	useEffect(() => {
+		if (loaded || error) {
+			SplashScreen.hideAsync();
+		}
+	}, [loaded, error]);
+
+	if (!loaded && !error) {
+		return null;
+	}
+
+	return (
+		<UserProvider>
+			<NavigationContainer>
+				<AuthStack />
+			</NavigationContainer>
+		</UserProvider>
+	);
+}
